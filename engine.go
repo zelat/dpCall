@@ -1801,6 +1801,7 @@ func taskDelContainer(id string) {
 	ClusterEventChan <- &ev
 }
 
+// agent向dp发送task
 func taskDPConnect() {
 	log.Info()
 
@@ -1876,8 +1877,7 @@ func containerTaskWorker(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsm
 			}
 
 			log.WithFields(log.Fields{"task": taskName, "id": task.id}).Debug("Task done")
-
-		case pmsg := <-probeChan:
+		case pmsg := <-probeChan: //从probeChan channel读取任务
 			msgName := probe.ProbeMsgName[pmsg.Type]
 			log.WithFields(log.Fields{
 				"msg": msgName, "containers": pmsg.ContainerIDs,
@@ -1917,10 +1917,10 @@ func containerTaskWorker(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsm
 
 			log.WithFields(log.Fields{"msg": msgName}).Debug("Probe message done")
 
-		case imsg := <-fsmonChan:
+		case imsg := <-fsmonChan: //从fsmonChan channel读取任务
 			//	log.WithFields(log.Fields{ "container": imsg.ID}).Debug("File system monitor message received")
 			reportIncident(fileModifiedToIncidentLog(imsg))
-		case connected := <-dpStatusChan:
+		case connected := <-dpStatusChan: //从dpstatus channel读取任务
 			if connected {
 				taskDPConnect()
 			}

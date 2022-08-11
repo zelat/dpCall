@@ -264,6 +264,17 @@ func main() {
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
+	// 读取已存在的容器
+	existing, _ := global.RT.ListContainerIDs()
+	if existing.Cardinality() > containerTaskChanSizeMin {
+		ContainerTaskChan = make(chan *ContainerTask, existing.Cardinality())
+	} else {
+		ContainerTaskChan = make(chan *ContainerTask, containerTaskChanSizeMin)
+	}
+	// 读取容器存储类型
+	rtStorageDriver = Host.StorageDriver
+	log.WithFields(log.Fields{"name": rtStorageDriver}).Info("Runtime storage driver")
+
 	// 创建一个dpStatus channel, 用于进程通信
 	dpStatusChan := make(chan bool, 2)
 	dp.Open(dpTaskCallback, dpStatusChan, errRestartChan)
