@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -469,6 +470,7 @@ func (client *DockerClient) Wait(id string) <-chan WaitResult {
 	return ch
 }
 
+// 监控event
 func (client *DockerClient) MonitorEvents(options *MonitorEventsOptions, stopChan <-chan struct{}) (<-chan EventOrError, error) {
 	v := url.Values{}
 	if options != nil {
@@ -523,6 +525,7 @@ func (client *DockerClient) MonitorEvents(options *MonitorEventsOptions, stopCha
 		}
 	}
 	uri := fmt.Sprintf("%s/%s/events?%s", client.URL.String(), APIVersion, v.Encode())
+	log.Info(uri)
 	resp, err := client.HTTPClient.Get(uri)
 	if err != nil {
 		return nil, err
@@ -552,6 +555,7 @@ func (client *DockerClient) MonitorEvents(options *MonitorEventsOptions, stopCha
 }
 
 func (client *DockerClient) StartMonitorEvents(cb Callback, ec chan error, args ...interface{}) {
+	// 创建一个用于goroutine线程间通信的channel
 	client.eventStopChan = make(chan struct{})
 
 	go func() {

@@ -4,16 +4,20 @@
     <option name="openedFilesInfos">
       <list>
         <OpenedFileInfo>
-          <option name="caretOffset" value="7940" />
+          <option name="caretOffset" value="7923" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/agent.go" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="59117" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/engine.go" />
+          <option name="caretOffset" value="11426" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/share/container/docker.go" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="0" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/share/container/types.go" />
+          <option name="caretOffset" value="13319" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/share/container/dockerclient/dockerclient.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="10939" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/engine.go" />
         </OpenedFileInfo>
       </list>
     </option>

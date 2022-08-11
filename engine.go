@@ -1846,6 +1846,7 @@ func containerTaskWorker(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsm
 		}
 
 		select {
+		//从ContainerTaskChan channel读取任务
 		case task := <-ContainerTaskChan:
 			taskName := ContainerTaskName[task.task]
 			log.WithFields(log.Fields{"task": taskName, "id": task.id}).Debug("Task received")
@@ -1978,10 +1979,20 @@ func eventMonitorLoop(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsmon.
 
 	//setContainerInterceptDelay()
 
-	//go containerTaskWorker(probeChan, fsmonChan, dpStatusChan)
+	go containerTaskWorker(probeChan, fsmonChan, dpStatusChan)
 
 	// 启动监控进程
-	go global.RT.MonitorEvent(runtimeEventCallback, false)
+	go func() {
+		err := global.RT.MonitorEvent(runtimeEventCallback, false)
+		if err != nil {
+			log.Error(err)
+		}
+	}()
+
+	//维持线程，测试代码
+	for {
+		time.Sleep(time.Second)
+	}
 }
 
 func stopMonitorLoop() {

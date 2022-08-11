@@ -264,12 +264,9 @@ func main() {
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
+	// 创建一个dpStatus channel, 用于进程通信
 	dpStatusChan := make(chan bool, 2)
 	dp.Open(dpTaskCallback, dpStatusChan, errRestartChan)
-	//维持线程，测试代码
-	//for {
-	//	time.Sleep(time.Second)
-	//}
 	// Probe
 	probeTaskChan := make(chan *probe.ProbeMessage, 256) // increase to avoid underflow
 	fsmonTaskChan := make(chan *fsmon.MonitorMessage, 8)

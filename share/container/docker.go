@@ -452,11 +452,12 @@ func (d *dockerDriver) MonitorEvent(cb EventCallback, cpath bool) error {
 	} else {
 		handler = d.eventHandler
 	}
-
+	// 通过channel可以实现两个goroutine之间的通信, 创建一个channel
 	errCh := make(chan error)
 	for {
 		go d.client.StartMonitorEvents(handler, errCh)
-
+		// 从channel读取数据errCh
+		// 如果监控到有event error,则触发下面流程
 		e := <-errCh
 		log.WithFields(log.Fields{"error": e}).Error("Docker event monitor error")
 
