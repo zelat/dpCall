@@ -186,5 +186,5 @@ func main() {
 	probeTaskChan := make(chan *probe.ProbeMessage, 256) // increase to avoid underflow
 	fsmonTaskChan := make(chan *fsmon.MonitorMessage, 8)
 	// 启动container监控线程
-	eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
+	//eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
 }

@@ -4,7 +4,11 @@
     <option name="openedFilesInfos">
       <list>
         <OpenedFileInfo>
-          <option name="caretOffset" value="0" />
+          <option name="caretOffset" value="23405" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/dp/ctrl.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="5573" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/agent.go" />
         </OpenedFileInfo>
       </list>
