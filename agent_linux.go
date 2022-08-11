@@ -2,27 +2,27 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 
 	"dpCall/share"
-	"dpCall/share/global"
-	"dpCall/share/system"
 	sk "dpCall/share/system/sidekick"
 	"dpCall/share/utils"
 )
 
+// 获取node节点的ip
 func getHostAddrs() map[string]sk.NetIface {
-	path := fmt.Sprintf("%s --act ports", system.ExecSidekick)
-	value, err := global.SYS.NsRunBinary(1, path)
-	if err != nil {
-		log.WithFields(log.Fields{"error": err}).Error("Error getting host IP")
-		return make(map[string]sk.NetIface)
-	}
-
-	var ifaces map[string]sk.NetIface
+	//path := fmt.Sprintf("%s --act ports", system.ExecSidekick)
+	//value, err := global.SYS.NsRunBinary(1, path)
+	ifaces := sk.GetGlobalAddrs()
+	value, _ := json.Marshal(ifaces)
+	//if err != nil {
+	//	log.WithFields(log.Fields{"error": err}).Error("Error getting host IP")
+	//	return make(map[string]sk.NetIface)
+	//}
+	//
+	//var ifaces map[string]sk.NetIface
 	json.Unmarshal(value, &ifaces)
 	return ifaces
 }

@@ -1976,12 +1976,12 @@ func containerTaskExit() {
 //event监控循环
 func eventMonitorLoop(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsmon.MonitorMessage, dpStatusChan chan bool) {
 
-	setContainerInterceptDelay()
+	//setContainerInterceptDelay()
 
 	//go containerTaskWorker(probeChan, fsmonChan, dpStatusChan)
 
 	// 启动监控进程
-	//go global.RT.MonitorEvent(runtimeEventCallback, false)
+	go global.RT.MonitorEvent(runtimeEventCallback, false)
 }
 
 func stopMonitorLoop() {
@@ -2030,6 +2030,7 @@ func getContainerService(id string) (string, bool, bool) {
 // For debug only - not to expose.
 func setContainerInterceptDelay() {
 	delay := os.Getenv("CONTAINER_INTERCEPT_DELAY")
+	fmt.Println("delay: ", delay)
 	if delay != "" {
 		if d, err := strconv.ParseUint(delay, 10, 32); err == nil {
 			containerGracePeriod = time.Duration(d) * time.Second

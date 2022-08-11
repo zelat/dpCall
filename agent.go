@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"sync/atomic"
+	"time"
 )
 
 const goroutineStackSize = 1024 * 1024
@@ -56,8 +57,12 @@ func isAgentContainer(id string) bool {
 }
 
 func getHostIPs() {
+	// 获取node上所有网卡信息
 	addrs := getHostAddrs()
+	log.WithFields(log.Fields{"addrs": addrs}).Info("")
+
 	Host.Ifaces, gInfo.hostIPs, gInfo.jumboFrameMTU = parseHostAddrs(addrs, Host.Platform, Host.Network)
+	// 获取node上tun设备的ip,mask
 	if tun := global.ORCH.GetHostTunnelIP(addrs); tun != nil {
 		Host.TunnelIP = tun
 	}
@@ -118,6 +123,61 @@ func adjustContainerPod(selfID string, containers []*container.ContainerMeta) st
 	return selfID
 }
 
+// 获取该节点的相关信息
+func getLocalInfo(selfID string, pid2ID map[int]string) error {
+	host, err := global.RT.GetHost()
+	if err != nil {
+		return err
+	}
+	Host = *host
+	Host.CgroupVersion = global.SYS.GetCgroupVersion()
+
+	//log.WithFields(log.Fields{"Host": Host}).Info("")
+
+	getHostIPs()
+
+	if networks, err := global.RT.ListNetworks(); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Error reading container networks")
+	} else {
+		gInfo.networks = networks
+	}
+
+	agentEnv.startsAt = time.Now().UTC()
+	if agentEnv.runInContainer {
+		dev, meta, err := global.RT.GetDevice(selfID)
+		if err != nil {
+			return err
+		}
+		Agent.CLUSDevice = *dev
+
+		_, parent := global.RT.GetParent(meta, pid2ID)
+		if parent != "" {
+			dev, _, err := global.RT.GetDevice(parent)
+			if err != nil {
+				return err
+			}
+			parentAgent.CLUSDevice = *dev
+			if parentAgent.PidMode == "host" {
+				Agent.PidMode = "host"
+			}
+		}
+	} else {
+		Agent.ID = Host.ID
+		Agent.Pid = os.Getpid()
+		Agent.NetworkMode = "host"
+		Agent.PidMode = "host"
+		Agent.SelfHostname = Host.Name
+		Agent.Ifaces = Host.Ifaces
+	}
+	Agent.HostName = Host.Name
+	Agent.HostID = Host.ID
+	Agent.Ver = Version
+
+	agentEnv.cgroupMemory, _ = global.SYS.GetContainerCgroupPath(0, "memory")
+	agentEnv.cgroupCPUAcct, _ = global.SYS.GetContainerCgroupPath(0, "cpuacct")
+	return nil
+}
+
 func main() {
 	// 初始化日志
 	log.SetOutput(os.Stdout)
@@ -168,6 +228,30 @@ func main() {
 	//	selfID = adjustContainerPod(selfID, containers)
 	//}
 
+	// 获取node下所有容器的ID
+	pid2ID := make(map[int]string)
+	for _, meta := range containers {
+		if meta.Pid != 0 {
+			pid2ID[meta.Pid] = meta.ID
+			log.WithFields(log.Fields{"ID": meta.ID}).Info("")
+		}
+	}
+
+	for {
+		// 获取该容器所在local host 和 dpCall进程的信息
+		if err = getLocalInfo(selfID, pid2ID); err != nil {
+			log.WithFields(log.Fields{"error": err}).Error("Failed to get local device information")
+			os.Exit(-2)
+		}
+
+		// 等待agent所在容器的网卡同步
+		if len(Agent.Ifaces) > 0 {
+			break
+		}
+		log.Info("Wait for local interface ...")
+		time.Sleep(time.Second * 4)
+	}
+
 	Host.Platform = platform
 	Host.Flavor = flavor
 	Host.Network = network
@@ -175,6 +259,10 @@ func main() {
 	parentAgent.Domain = global.ORCH.GetDomain(parentAgent.Labels)
 
 	//policyInit()
+	Host.StorageDriver = global.RT.GetStorageDriver()
+	log.WithFields(log.Fields{"hostIPs": gInfo.hostIPs}).Info("")
+	log.WithFields(log.Fields{"host": Host}).Info("")
+	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
 	dpStatusChan := make(chan bool, 2)
 	dp.Open(dpTaskCallback, dpStatusChan, errRestartChan)
@@ -186,5 +274,5 @@ func main() {
 	probeTaskChan := make(chan *probe.ProbeMessage, 256) // increase to avoid underflow
 	fsmonTaskChan := make(chan *fsmon.MonitorMessage, 8)
 	// 启动container监控线程
-	//eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
+	eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
 }
