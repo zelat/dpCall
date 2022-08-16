@@ -576,6 +576,7 @@ func DPCtrlConfigPolicyAddr(subnets map[string]share.CLUSSubnet) {
 	}
 }
 
+/* 将host上的子网地址CIDR发送给dp*/
 func DPCtrlConfigInternalSubnet(subnets map[string]share.CLUSSubnet) {
 	data_subnet := make([]DPSubnet, 0, len(subnets))
 	for _, addr := range subnets {
@@ -588,7 +589,6 @@ func DPCtrlConfigInternalSubnet(subnets map[string]share.CLUSSubnet) {
 		}
 		data_subnet = append(data_subnet, subnet)
 	}
-
 	var start, end int = 0, 0
 	var first bool = true
 	var subnetPerMsg int = 600
@@ -603,10 +603,11 @@ func DPCtrlConfigInternalSubnet(subnets map[string]share.CLUSSubnet) {
 	retry:
 		flag = 0
 		if start == 0 {
-			flag = C.MSG_START
+			flag = C.MSG_START //  MSG_START = 0x1, flag = 0x1
 		}
+		// subnets的大小 < subnetPerMsg(600), 则flag = 3
 		if num <= subnetPerMsg {
-			flag |= C.MSG_END
+			flag |= C.MSG_END // MSG_END = 0x2, flag = 0x01|0x10 = 0x11
 			end = start + num
 		} else {
 			end = start + subnetPerMsg
@@ -644,6 +645,7 @@ func DPCtrlConfigInternalSubnet(subnets map[string]share.CLUSSubnet) {
 	}
 }
 
+/* */
 func DPCtrlConfigSpecialIPSubnet(subnets map[string]share.CLUSSpecSubnet) {
 	data_subnet := make([]DPSpecSubnet, 0, len(subnets))
 	for _, addr := range subnets {

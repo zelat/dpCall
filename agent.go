@@ -190,9 +190,17 @@ func main() {
 
 	log.WithFields(log.Fields{"version": "1.0"}).Info("START")
 
+	// 设置debug
+	debug := flag.Bool("d", false, "Enable control path debug")
 	rtSock := flag.String("u", "", "Container socket URL")
 	skip_nvProtect := flag.Bool("s", false, "Skip NV Protect")
+	flag.Parse()
 
+	// 全局设置debug mode
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+		gInfo.agentConfig.Debug = []string{"ctrl"}
+	}
 	// 获取编排类型，network,容器类型
 	platform, flavor, network, containers, err := global.SetGlobalObjects(*rtSock, nil)
 	if err != nil {

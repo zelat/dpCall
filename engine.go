@@ -315,6 +315,7 @@ func isSidecarContainer(labels map[string]string) bool {
 	return false
 }
 
+// 根据传入的event类型
 func runtimeEventCallback(ev container.Event, id string, pid int) {
 	switch ev {
 	case container.EventContainerStart:
@@ -1208,6 +1209,7 @@ func programBridge(c *containerData) {
 	}
 }
 
+//  配置dp
 func programDP(c *containerData, cfgApp bool, macChangePairs map[string]*pipe.InterceptPair) {
 	if c.hostMode || !c.hasDatapath {
 		return
@@ -1803,9 +1805,10 @@ func taskDelContainer(id string) {
 
 // agent向dp发送task
 func taskDPConnect() {
-	log.Info()
+	log.Info("DP ready to connect...")
 
 	// Set debug as the first thing
+	// 根据传入的参数，决定是否开始debug模式
 	debug := &dp.DPDebug{Categories: gInfo.agentConfig.Debug}
 	dp.DPCtrlConfigAgent(debug)
 
@@ -1816,6 +1819,8 @@ func taskDPConnect() {
 		jumboFrame := gInfo.jumboFrameMTU
 		dp.DPCtrlAddSrvcPort(nvSvcPort, &jumboFrame)
 	}
+
+	log.Info("Active Containers = ", gInfo.activeContainers)
 	for _, c := range gInfo.activeContainers {
 		programDP(c, true, nil)
 		if gInfo.tapProxymesh {
