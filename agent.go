@@ -13,7 +13,10 @@ import (
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"os/signal"
+	"runtime"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -180,6 +183,15 @@ func getLocalInfo(selfID string, pid2ID map[int]string) error {
 	return nil
 }
 
+func dumpGoroutineStack() {
+	log.Info("Enforcer goroutine stack")
+	buf := make([]byte, goroutineStackSize)
+	bytes := runtime.Stack(buf, true)
+	if bytes > 0 {
+		log.Printf("%s", buf[:bytes])
+	}
+}
+
 func main() {
 	// 初始化日志
 	log.SetOutput(os.Stdout)
@@ -277,9 +289,9 @@ func main() {
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
-	//done := make(chan bool, 1)
-	//c_sig := make(chan os.Signal, 1)
-	//signal.Notify(c_sig, os.Interrupt, syscall.SIGTERM)
+	done := make(chan bool, 1)
+	c_sig := make(chan os.Signal, 1)
+	signal.Notify(c_sig, os.Interrupt, syscall.SIGTERM)
 
 	// 读取已存在的容器
 	existing, _ := global.RT.ListContainerIDs()
@@ -379,9 +391,30 @@ func main() {
 	//	<-c_sig
 	//	done <- true
 	//}()
+	log.Info("Ready ...")
 
+	var rc int
+	select {
+	case <-done:
+		rc = 0
+	case <-monitorExitChan:
+		rc = -2
+	case <-restartChan:
+		// Agent is kicked because of license limit.
+		// Return -1 so that monitor will restart the agent,
+		// and agent will reconnect after license update.
+		rc = -1
+	case <-errRestartChan:
+		// Proactively restart agent to recover from error condition.
+		// Return -1 so that monitor will restart the agent.
+		rc = -1
+		dumpGoroutineStack()
+	}
 	//维持线程，测试代码
 	for {
 		time.Sleep(time.Second)
 	}
+
+	log.Info("Exited")
+	os.Exit(rc)
 }

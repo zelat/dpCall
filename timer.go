@@ -94,9 +94,8 @@ func statsLoop(bPassiveContainerDetect bool) {
 			log.Info("gInfo.activeContainers = ", gInfo.activeContainers)
 			gInfoRUnlock()
 		case <-runStateTicker:
-			fmt.Println("=========================================runStateTikcer\n")
 			// Check container periodically in case container removal event is missed.
-			existing, stops := global.RT.ListContainerIDs()
+			existing, stops := global.RT.ListContainerIDs() // 重新获取当前host上的容器
 			gInfoRLock()
 			gone := gInfo.allContainers.Difference(existing)
 			creates := existing.Difference(gInfo.allContainers)

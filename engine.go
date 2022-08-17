@@ -1614,29 +1614,6 @@ func taskAddContainer(id string, info *container.ContainerMetaExtra) {
 	log.WithFields(log.Fields{"name": info.Name, "id": info.ID}).Info("")
 	log.WithFields(log.Fields{"container": info}).Debug("")
 
-	/*
-		// Check if container is intermediate
-		// Intermediate containers are createdy by "docker build".
-		if strings.HasPrefix(info.ImageHash, "sha256:") {
-			if danglings, err := global.RT.Client.ListDanglingImages(); err == nil {
-				for _, img := range danglings {
-					if info.Image == img.Id {
-						log.WithFields(log.Fields{"image": img.Id}).Info("Skip container with dangling image")
-						return
-					}
-				}
-
-				// Check if image exists
-				if _, err = global.RT.GetImage(info.Image); err != nil {
-					log.WithFields(log.Fields{"error": err}).Info("Skip container with image error")
-					return
-				}
-			} else {
-				log.WithFields(log.Fields{"error": err}).Error("Failed to get dangling images")
-			}
-		}
-	*/
-
 	gInfoLock()
 	gInfo.allContainers.Add(id)
 	gInfoUnlock()
@@ -1651,7 +1628,6 @@ func taskAddContainer(id string, info *container.ContainerMetaExtra) {
 		log.Debug("Container not running")
 		return
 	}
-
 	c := &containerData{
 		id:             id,
 		name:           info.Name,
@@ -1668,7 +1644,7 @@ func taskAddContainer(id string, info *container.ContainerMetaExtra) {
 	gInfo.activePid2ID[c.pid] = id
 	gInfoUnlock()
 
-	//bench.AddContainer(id, info.Name)
+	////bench.AddContainer(id, info.Name)
 
 	since := time.Since(info.StartedAt)
 	if since < containerGracePeriod {
@@ -1677,9 +1653,9 @@ func taskAddContainer(id string, info *container.ContainerMetaExtra) {
 			containerGracePeriod); err != nil {
 			log.WithFields(log.Fields{"id": id, "info": info}).Error("schedule intercept failed!")
 			taskInterceptContainer(id, info)
+		} else {
+			taskInterceptContainer(id, info)
 		}
-	} else {
-		taskInterceptContainer(id, info)
 	}
 }
 
