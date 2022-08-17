@@ -1425,7 +1425,8 @@ func (p *Probe) initReadProcesses() bool {
 	for _, proc := range p.pidProcMap {
 		p.newProcesses.Add(proc)
 		if _, ok := kubeProcs[proc.name]; ok {
-			foundKube = p.informKubeBench(proc)
+			// 初始化的时候，先不做benchmark
+			foundKube = true // p.informKubeBench(proc)
 		} else {
 			p.inspectProcess.Add(proc)
 		}
@@ -2645,7 +2646,7 @@ func (p *Probe) PatchContainerProcess(pid int, bEval bool) bool {
 			lastScanTime: now,
 			action:       share.PolicyActionAllow,
 		}
-
+		log.Info(proc)
 		// is it a process inside a cgroup
 		if c, ok := p.addContainerCandidateFromProc(proc); ok {
 			p.updateProcess(proc)

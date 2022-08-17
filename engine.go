@@ -1993,11 +1993,6 @@ func eventMonitorLoop(probeChan chan *probe.ProbeMessage, fsmonChan chan *fsmon.
 			log.Error(err)
 		}
 	}()
-
-	//维持线程，测试代码
-	for {
-		time.Sleep(time.Second)
-	}
 }
 
 func stopMonitorLoop() {

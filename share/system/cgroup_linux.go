@@ -146,8 +146,6 @@ func (s *SystemTools) getContainerIDByCgroup(path string) (string, bool, error, 
 		return "", false, err, false
 	}
 	defer f.Close()
-	log.Info("cgroupversion is")
-	log.Info(s.cgroupVersion)
 	if s.cgroupVersion == cgroup_v2 {
 		id, containerInContainer, found := getContainerIDByCgroupReaderV2(f, from_cgroup)
 		if !found {
@@ -726,6 +724,7 @@ func (s *SystemTools) CGroupMemoryStatReset(threshold uint64) bool {
 //  "low": system is reclaiming memory for new allocations.
 //  "medium": system is experiencing medium memory pressure, the system might be making swap, paging out active file caches, etc.
 //  "critical": system is actively thrashing, it is about to out of memory (OOM) or even the in-kernel OOM killer is on its way to trigger.
+// MemOomNotifier发送压力等级通知：low/medium/critical
 func (s *SystemTools) registerCGroupMemoryPressureNotifier() (int, int, int, error) {
 	if s.cgroupVersion == cgroup_v2 {
 		return -1, -1, -1, errUnsupported
@@ -742,7 +741,6 @@ func (s *SystemTools) registerCGroupMemoryPressureNotifier() (int, int, int, err
 					err = fmt.Errorf("eventfd call failed")
 				} else {
 					config := fmt.Sprintf("%d %d low", eventfd, watchfd)
-					// log.WithFields(log.Fields{"config": config}).Debug()
 					if _, err = syscall.Write(controlfd, []byte(config)); err == nil {
 						return watchfd, controlfd, eventfd, nil
 					}
@@ -783,7 +781,7 @@ func (s *SystemTools) MonitorMemoryPressureEvents(threshold uint64, callback Mem
 			}
 			var level uint64
 			binary.Read(bytes.NewBuffer(buf[:]), binary.LittleEndian, &level)
-			// log.WithFields(log.Fields{"level": level}).Debug()
+			log.WithFields(log.Fields{"level": level}).Info()
 			eventCh <- level
 		}
 	}()

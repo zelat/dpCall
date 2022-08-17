@@ -35,6 +35,8 @@ var evqueue cluster.ObjectQueueInterface
 var messenger cluster.MessengerInterface
 var agentTimerWheel *utils.TimerWheel
 var prober *probe.Probe
+
+var bench *Bench
 var grpcServer *cluster.GRPCServer
 
 //var scanUtil *scanUtils.ScanUtil
@@ -123,7 +125,7 @@ func adjustContainerPod(selfID string, containers []*container.ContainerMeta) st
 	return selfID
 }
 
-// 获取该节点的相关信息
+// 获取该节点的agent和host相关信息
 func getLocalInfo(selfID string, pid2ID map[int]string) error {
 	host, err := global.RT.GetHost()
 	if err != nil {
@@ -194,6 +196,7 @@ func main() {
 	debug := flag.Bool("d", false, "Enable control path debug")
 	rtSock := flag.String("u", "", "Container socket URL")
 	skip_nvProtect := flag.Bool("s", false, "Skip NV Protect")
+	show_monitor_trace := flag.Bool("m", false, "Show process/file monitor traces")
 	flag.Parse()
 
 	// 全局设置debug mode
@@ -263,6 +266,8 @@ func main() {
 	Host.Platform = platform
 	Host.Flavor = flavor
 	Host.Network = network
+	Host.CapDockerBench = (global.RT.String() == container.RuntimeDocker)
+	Host.CapKubeBench = global.ORCH.SupportKubeCISBench()
 	Agent.Domain = global.ORCH.GetDomain(Agent.Labels)
 	parentAgent.Domain = global.ORCH.GetDomain(parentAgent.Labels)
 
@@ -271,6 +276,10 @@ func main() {
 	log.WithFields(log.Fields{"hostIPs": gInfo.hostIPs}).Info("")
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
+
+	//done := make(chan bool, 1)
+	//c_sig := make(chan os.Signal, 1)
+	//signal.Notify(c_sig, os.Interrupt, syscall.SIGTERM)
 
 	// 读取已存在的容器
 	existing, _ := global.RT.ListContainerIDs()
@@ -286,9 +295,93 @@ func main() {
 	// 创建一个dpStatus channel, 用于进程通信
 	dpStatusChan := make(chan bool, 2)
 	dp.Open(dpTaskCallback, dpStatusChan, errRestartChan)
-	// Probe
+
+	// Benchmark
+	//bench = newBench(Host.Platform, Host.Flavor)
+	//go bench.BenchLoop()
+	//
+	//if Host.CapDockerBench {
+	//	bench.RerunDocker()
+	//} else {
+	//	// If the older version write status into the cluster, clear it.
+	//	bench.ResetDockerStatus()
+	//}
+	//if !Host.CapKubeBench {
+	//	// If the older version write status into the cluster, clear it.
+	//	bench.ResetKubeStatus()
+	//}
+
+	bPassiveContainerDetect := global.RT.String() == container.RuntimeCriO
+
+	// Probe, 配置探针
 	probeTaskChan := make(chan *probe.ProbeMessage, 256) // increase to avoid underflow
 	fsmonTaskChan := make(chan *fsmon.MonitorMessage, 8)
+	faEndChan := make(chan bool, 1)
+	//fsmonEndChan := make(chan bool, 1)
+	probeConfig := probe.ProbeConfig{
+		Pid:                  Agent.Pid,
+		PidMode:              Agent.PidMode,
+		DpTaskCallback:       dpTaskCallback,
+		NotifyTaskChan:       probeTaskChan,
+		NotifyFsTaskChan:     fsmonTaskChan,
+		PolicyLookupFunc:     hostPolicyLookup,
+		ProcPolicyLookupFunc: processPolicyLookup,
+		ReportLearnProc:      addLearnedProcess,
+		ContainerInContainer: agentEnv.containerInContainer,
+		GetContainerPid:      cbGetContainerPid,
+		GetAllContainerList:  cbGetAllContainerList,
+		//RerunKubeBench:       cbRerunKube,
+		GetEstimateProcGroup: cbEstimateDeniedProcessdByGroup,
+		GetServiceGroupName:  cbGetLearnedGroupName,
+		FAEndChan:            faEndChan,
+		DeferContStartRpt:    bPassiveContainerDetect,
+		EnableTrace:          *show_monitor_trace,
+		KubePlatform:         Host.Platform == share.PlatformKubernetes,
+		WalkHelper:           walkerTask,
+	}
+
+	// 初始化prober
+	if prober, err = probe.New(&probeConfig); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to probe. Exit!")
+		os.Exit(-2)
+	}
+
+	//// 文件系统监控
+	//fmonConfig := fsmon.FileMonitorConfig{
+	//	IsAufs:         global.RT.GetStorageDriver() == "aufs",
+	//	EnableTrace:    *show_monitor_trace,
+	//	EndChan:        fsmonEndChan,
+	//	WalkerTask:     walkerTask,
+	//	PidLookup:      prober.ProcessLookup,
+	//	SendReport:     prober.SendAggregateFsMonReport,
+	//	SendAccessRule: sendLearnedFileAccessRule,
+	//	EstRule:        cbEstimateFileAlertByGroup,
+	//}
+	//
+	//// 初始化fileWatcher
+	//if fileWatcher, err = fsmon.NewFileWatcher(&fmonConfig); err != nil {
+	//	log.WithFields(log.Fields{"error": err}).Error("Failed to open file monitor!")
+	//	os.Exit(-2)
+	//}
+	//
+	//prober.SetFileMonitor(fileWatcher)
+
 	// 启动container监控线程
 	eventMonitorLoop(probeTaskChan, fsmonTaskChan, dpStatusChan)
+
+	clusterLoop(existing)
+	existing = nil
+
+	go statsLoop(bPassiveContainerDetect)
+
+	// Wait for SIGTREM
+	//go func() {
+	//	<-c_sig
+	//	done <- true
+	//}()
+
+	//维持线程，测试代码
+	for {
+		time.Sleep(time.Second)
+	}
 }

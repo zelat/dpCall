@@ -60,7 +60,9 @@ const memSafeGap uint64 = 64 * 1024 * 1024                  // 64 MB
 var memStatsEnforcerResetMark uint64 = memEnforcerTopPeak - memSafeGap
 
 func statsLoop(bPassiveContainerDetect bool) {
+	// 每隔5S执行一次定时任务，监控agent和每个active容器
 	statsTicker := time.Tick(time.Second * time.Duration(statsInterval))
+	// 每隔10min执行一次定时任务
 	memStatsTicker := time.NewTicker(time.Minute * time.Duration(memoryRecyclePeriod))
 	if agentEnv.runWithController { // effctive by the enforcer alone
 		memStatsTicker.Stop()
@@ -71,6 +73,7 @@ func statsLoop(bPassiveContainerDetect bool) {
 			}
 			log.WithFields(log.Fields{"Limit": limit, "Controlled_At": memStatsEnforcerResetMark}).Info("Memory Resource")
 		}
+		// 监控内存压力
 		go global.SYS.MonitorMemoryPressureEvents(memStatsEnforcerResetMark, memoryPressureNotification)
 	}
 
@@ -82,13 +85,16 @@ func statsLoop(bPassiveContainerDetect bool) {
 
 	for {
 		select {
+		// 定期更新agent和active‘s containers的状态
 		case <-statsTicker:
 			system, _ := global.SYS.GetHostCPUUsage()
 			gInfoRLock()
 			updateAgentStats(system)
 			updateContainerStats(system)
+			log.Info("gInfo.activeContainers = ", gInfo.activeContainers)
 			gInfoRUnlock()
 		case <-runStateTicker:
+			fmt.Println("=========================================runStateTikcer\n")
 			// Check container periodically in case container removal event is missed.
 			existing, stops := global.RT.ListContainerIDs()
 			gInfoRLock()
@@ -118,7 +124,7 @@ func statsLoop(bPassiveContainerDetect bool) {
 			gone.Clear()
 			creates.Clear()
 			gone, creates = nil, nil
-		case <-memStatsTicker.C:
+		case <-memStatsTicker.C: // 监控memory状态
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			agentMem := m.TotalAlloc
@@ -132,6 +138,7 @@ func statsLoop(bPassiveContainerDetect bool) {
 	}
 }
 
+// 定期向cluter写数据
 func timerLoop() {
 	ticker := time.Tick(time.Second * time.Duration(reportInterval))
 	for {
@@ -181,12 +188,14 @@ func dpTaskCallback(task *dp.DPTask) {
 	}
 }
 
+// 更新agent内存&CPU使用率，更新到gInfo.agentStats
 func updateAgentStats(cpuSystem uint64) {
 	mem, _ := global.SYS.GetContainerMemoryUsage(agentEnv.cgroupMemory)
 	cpu, _ := global.SYS.GetContainerCPUUsage(agentEnv.cgroupCPUAcct)
 	system.UpdateStats(&gInfo.agentStats, mem, cpu, cpuSystem)
 }
 
+// 更新存活容器的内存&CPU使用率，更新到gInfo.activeContainers
 func updateContainerStats(cpuSystem uint64) {
 	for _, c := range gInfo.activeContainers {
 		mem, _ := global.SYS.GetContainerMemoryUsage(c.cgroupMemory)

@@ -720,41 +720,8 @@ func getLeadGRPCEndpoint() string {
 	return fmt.Sprintf("%s:%v", leadAddr, leadGrpcPort)
 }
 
+//  更新已经存在containers
 func clusterLoop(existing utils.Set) {
-	// Remove non-existing containers from cluster
-	store := share.CLUSWorkloadHostStore(Host.ID)
-	keys, _ := cluster.GetStoreKeys(store)
-	for _, key := range keys {
-		id := share.CLUSWorkloadKey2ID(key)
-		if !existing.Contains(id) {
-			cluster.Delete(key)
-		}
-	}
-
-	// Start event loop first so existing containers can be posted
-	go func() {
-		for {
-			if shouldExit() {
-				log.Info("Exit cluster worker")
-				break
-			}
-			select {
-			case ev := <-ClusterEventChan:
-				if ev.event != EV_CLUSTER_EXIT {
-					clusterEventHandler(ev)
-				}
-			}
-		}
-
-		logAgent(share.CLUSEvAgentStop)
-		evqueue.Flush()
-
-		// Delete agent info only, keep the host so when the new agent starts
-		// on the same host, network connection info can be retained.
-		deleteAgentInfo()
-		leaveCluster()
-	}()
-
 	sorted := sortContainerByNetMode(existing)
 
 	// Update existing containers to cluster.
@@ -764,17 +731,64 @@ func clusterLoop(existing utils.Set) {
 			task := ContainerTask{task: TASK_ADD_CONTAINER, id: info.ID, info: info}
 			ContainerTaskChan <- &task
 		}
-
-		// At this time, local container and devices info has been processed, corresponding
-		// container tasks have been enqueued. Now, we can start listening config and diagnose
-		// command, because they can only applied to known objects.
-		cluster.RegisterStoreWatcher(share.CLUSUniconfTargetStore(Host.ID), uniconfHandler, false)
-		cluster.RegisterStoreWatcher(share.CLUSNetworkStore, systemUpdateHandler, false)
-		cluster.RegisterStoreWatcher(share.CLUSNodeCommonProfileStore, systemUpdateHandler, agentEnv.kvCongestCtrl)
-		cluster.RegisterStoreWatcher(share.CLUSNodeProfileStoreKey(Host.ID), systemUpdateHandler, agentEnv.kvCongestCtrl)
-		cluster.RegisterLeadChangeWatcher(leadChangeHandler, leadAddr)
 	}()
 }
+
+//func clusterLoop(existing utils.Set) {
+//	//Remove non-existing containers from cluster
+//	store := share.CLUSWorkloadHostStore(Host.ID)
+//	keys, _ := cluster.GetStoreKeys(store)
+//	for _, key := range keys {
+//		id := share.CLUSWorkloadKey2ID(key)
+//		if !existing.Contains(id) {
+//			cluster.Delete(key)
+//		}
+//	}
+//
+//	//Start event loop first so existing containers can be posted
+//	go func() {
+//		for {
+//			if shouldExit() {
+//				log.Info("Exit cluster worker")
+//				break
+//			}
+//			select {
+//			case ev := <-ClusterEventChan:
+//				if ev.event != EV_CLUSTER_EXIT {
+//					clusterEventHandler(ev)
+//				}
+//			}
+//		}
+//
+//		logAgent(share.CLUSEvAgentStop)
+//		evqueue.Flush()
+//
+//		// Delete agent info only, keep the host so when the new agent starts
+//		// on the same host, network connection info can be retained.
+//		deleteAgentInfo()
+//		leaveCluster()
+//	}()
+//
+//	sorted := sortContainerByNetMode(existing)
+//
+//	// Update existing containers to cluster.
+//	go func() {
+//		for _, info := range sorted {
+//			log.WithFields(log.Fields{"id": info.ID, "name": info.Name}).Info()
+//			task := ContainerTask{task: TASK_ADD_CONTAINER, id: info.ID, info: info}
+//			ContainerTaskChan <- &task
+//		}
+//
+//		// At this time, local container and devices info has been processed, corresponding
+//		// container tasks have been enqueued. Now, we can start listening config and diagnose
+//		// command, because they can only applied to known objects.
+//		cluster.RegisterStoreWatcher(share.CLUSUniconfTargetStore(Host.ID), uniconfHandler, false)
+//		cluster.RegisterStoreWatcher(share.CLUSNetworkStore, systemUpdateHandler, false)
+//		cluster.RegisterStoreWatcher(share.CLUSNodeCommonProfileStore, systemUpdateHandler, agentEnv.kvCongestCtrl)
+//		cluster.RegisterStoreWatcher(share.CLUSNodeProfileStoreKey(Host.ID), systemUpdateHandler, agentEnv.kvCongestCtrl)
+//		cluster.RegisterLeadChangeWatcher(leadChangeHandler, leadAddr)
+//	}()
+//}
 
 func closeCluster() {
 	cluster.PauseAllWatchers(true)

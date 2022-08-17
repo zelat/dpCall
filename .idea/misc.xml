@@ -4,16 +4,28 @@
     <option name="openedFilesInfos">
       <list>
         <OpenedFileInfo>
-          <option name="caretOffset" value="59423" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/engine.go" />
+          <option name="caretOffset" value="6012" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/timer.go" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="4466" />
-          <option name="fileUrl" value="file://$PROJECT_DIR$/dp/ctrl.go" />
+          <option name="caretOffset" value="21063" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/cluster.go" />
         </OpenedFileInfo>
         <OpenedFileInfo>
-          <option name="caretOffset" value="1055" />
+          <option name="caretOffset" value="11231" />
           <option name="fileUrl" value="file://$PROJECT_DIR$/agent.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="80284" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/probe/process.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="44360" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/bench.go" />
+        </OpenedFileInfo>
+        <OpenedFileInfo>
+          <option name="caretOffset" value="47037" />
+          <option name="fileUrl" value="file://$PROJECT_DIR$/engine.go" />
         </OpenedFileInfo>
       </list>
     </option>
