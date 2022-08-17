@@ -727,7 +727,7 @@ func clusterLoop(existing utils.Set) {
 	// 更新host上已经存在的容器
 	go func() {
 		for _, info := range sorted {
-			log.WithFields(log.Fields{"id": info.ID, "name": info.Name}).Info()
+			//log.WithFields(log.Fields{"id": info.ID, "name": info.Name}).Info()
 			task := ContainerTask{task: TASK_ADD_CONTAINER, id: info.ID, info: info}
 			ContainerTaskChan <- &task
 		}

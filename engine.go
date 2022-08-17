@@ -1791,6 +1791,7 @@ func taskDPConnect() {
 	dp.DPCtrlConfigInternalSubnet(gInfo.internalSubnets)
 	dp.DPCtrlConfigSpecialIPSubnet(specialSubnets)
 
+	// 将增加的veth pair传给dp, dp创建fd监听veth pair流量
 	if driver != pipe.PIPE_NOTC {
 		jumboFrame := gInfo.jumboFrameMTU
 		dp.DPCtrlAddSrvcPort(nvSvcPort, &jumboFrame)

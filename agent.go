@@ -2,6 +2,7 @@ package main
 
 import (
 	"dpCall/dp"
+	"dpCall/pipe"
 	"dpCall/probe"
 	"dpCall/share"
 	"dpCall/share/cluster"
@@ -13,10 +14,8 @@ import (
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"os/signal"
 	"runtime"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -207,6 +206,8 @@ func main() {
 	// 设置debug
 	debug := flag.Bool("d", false, "Enable control path debug")
 	rtSock := flag.String("u", "", "Container socket URL")
+	pipeType := flag.String("p", "", "Pipe driver")
+	cnet_type := flag.String("n", "", "Container Network type")
 	skip_nvProtect := flag.Bool("s", false, "Skip NV Protect")
 	show_monitor_trace := flag.Bool("m", false, "Show process/file monitor traces")
 	flag.Parse()
@@ -289,9 +290,23 @@ func main() {
 	log.WithFields(log.Fields{"host": Host}).Info("")
 	log.WithFields(log.Fields{"agent": Agent}).Info("")
 
-	done := make(chan bool, 1)
-	c_sig := make(chan os.Signal, 1)
-	signal.Notify(c_sig, os.Interrupt, syscall.SIGTERM)
+	//var driver string
+	if *pipeType == "ovs" {
+		driver = pipe.PIPE_OVS
+	} else if *pipeType == "no_tc" {
+		driver = pipe.PIPE_NOTC
+	} else {
+		driver = pipe.PIPE_TC
+	}
+	log.WithFields(log.Fields{"pipeType": driver, "jumboframe": gInfo.jumboFrameMTU}).Info("")
+	// 增加veth pair
+	if nvSvcPort, nvSvcBrPort, err = pipe.Open(driver, cnet_type, Agent.Pid, gInfo.jumboFrameMTU); err != nil {
+		log.WithFields(log.Fields{"error": err}).Error("Failed to open pipe driver")
+		os.Exit(-2)
+	}
+	//done := make(chan bool, 1)
+	//c_sig := make(chan os.Signal, 1)
+	//signal.Notify(c_sig, os.Interrupt, syscall.SIGTERM)
 
 	// 读取已存在的容器
 	existing, _ := global.RT.ListContainerIDs()
@@ -307,21 +322,6 @@ func main() {
 	// 创建一个dpStatus channel, 用于进程通信
 	dpStatusChan := make(chan bool, 2)
 	dp.Open(dpTaskCallback, dpStatusChan, errRestartChan)
-
-	// Benchmark
-	//bench = newBench(Host.Platform, Host.Flavor)
-	//go bench.BenchLoop()
-	//
-	//if Host.CapDockerBench {
-	//	bench.RerunDocker()
-	//} else {
-	//	// If the older version write status into the cluster, clear it.
-	//	bench.ResetDockerStatus()
-	//}
-	//if !Host.CapKubeBench {
-	//	// If the older version write status into the cluster, clear it.
-	//	bench.ResetKubeStatus()
-	//}
 
 	bPassiveContainerDetect := global.RT.String() == container.RuntimeCriO
 
@@ -395,8 +395,8 @@ func main() {
 
 	var rc int
 	select {
-	case <-done:
-		rc = 0
+	//case <-done:
+	//	rc = 0
 	case <-monitorExitChan:
 		rc = -2
 	case <-restartChan:

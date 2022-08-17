@@ -91,7 +91,7 @@ func statsLoop(bPassiveContainerDetect bool) {
 			gInfoRLock()
 			updateAgentStats(system)
 			updateContainerStats(system)
-			log.Info("gInfo.activeContainers = ", gInfo.activeContainers)
+			//log.Info("gInfo.activeContainers = ", gInfo.activeContainers)
 			gInfoRUnlock()
 		case <-runStateTicker:
 			// Check container periodically in case container removal event is missed.

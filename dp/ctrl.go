@@ -172,8 +172,9 @@ func DPCtrlDelNfqPort(netns, iface string) {
 	dpSendMsg(msg)
 }
 
+// iface: vth-neuv传给dp
 func DPCtrlAddSrvcPort(iface string, jumboframe *bool) {
-	log.WithFields(log.Fields{"iface": iface}).Debug("")
+	log.WithFields(log.Fields{"iface": iface}).Info("")
 
 	data := DPAddSrvcPortReq{
 		AddPort: &DPSrvcPort{
